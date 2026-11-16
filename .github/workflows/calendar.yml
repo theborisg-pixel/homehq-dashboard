@@ -1,5 +1,5 @@
-name: Sync calendar
-# Publishes upcoming events from the family calendar as calendar.json for the dashboard.
+name: Sync calendar and news
+# Publishes calendar.json (family calendar events) and news.json (today's headlines) for the dashboard.
 on:
   schedule:
     - cron: '7,22,37,52 * * * *'
@@ -21,10 +21,13 @@ jobs:
       - run: node .github/scripts/sync-calendar.mjs calendar.json
         env:
           CALENDAR_ICS_URL: ${{ secrets.CALENDAR_ICS_URL }}
+      - name: Fetch news headlines
+        run: node .github/scripts/fetch-news.mjs news.json || echo "News fetch failed; keeping the old headlines."
       - name: Publish if changed
         run: |
           git add calendar.json
+          if [ -f news.json ]; then git add news.json; fi
           if git diff --cached --quiet; then echo "No calendar changes."; exit 0; fi
-          git -c user.name="calendar-sync" -c user.email="actions@users.noreply.github.com" commit -q -m "Update calendar"
+          git -c user.name="calendar-sync" -c user.email="actions@users.noreply.github.com" commit -q -m "Update calendar and news"
           git pull -q --rebase
           git push -q
